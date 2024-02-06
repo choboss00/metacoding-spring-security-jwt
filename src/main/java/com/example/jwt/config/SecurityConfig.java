@@ -1,10 +1,15 @@
 package com.example.jwt.config;
 
+import com.example.jwt.config.jwt.JwtAuthenticationFilter;
+import com.example.jwt.config.jwt.JwtAuthorizationFilter;
 import com.example.jwt.filter.MyFilter1;
 import com.example.jwt.filter.MyFilter3;
+import com.example.jwt.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -18,6 +23,14 @@ public class SecurityConfig {
     @Autowired
     private CorsConfig corsConfig;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @Bean
+    public AuthenticationManager authenticationManagerBean(HttpSecurity http) throws Exception {
+        return http.getSharedObject(AuthenticationManagerBuilder.class).build();
+    }
+
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
@@ -28,6 +41,8 @@ public class SecurityConfig {
                 .addFilter(corsConfig.corsFilter())
                 .formLogin().disable()
                 .httpBasic().disable()
+                .addFilter(new JwtAuthenticationFilter(authenticationManagerBean(http))) // AuthenticationManger 를 파라미터로 줘야 함
+                .addFilter(new JwtAuthorizationFilter(authenticationManagerBean(http), userRepository)) // AuthenticationManger 를 파라미터로 줘야 함
                 .authorizeRequests(authroize -> authroize.antMatchers("/api/v1/user/**")
                         .access("hasRole('ROLE_USER') or hasRole('ROLE_MANAGER') or hasRole('ROLE_ADMIN')")
                         .antMatchers("/api/v1/manager/**")
